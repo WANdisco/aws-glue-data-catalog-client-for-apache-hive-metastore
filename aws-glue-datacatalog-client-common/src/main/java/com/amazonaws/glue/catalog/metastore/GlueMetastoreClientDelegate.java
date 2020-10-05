@@ -93,6 +93,7 @@ import static com.amazonaws.glue.catalog.util.MetastoreClientUtils.isExternalTab
 import static com.amazonaws.glue.catalog.util.MetastoreClientUtils.makeDirs;
 import static com.amazonaws.glue.catalog.util.MetastoreClientUtils.validateGlueTable;
 import static com.amazonaws.glue.catalog.util.MetastoreClientUtils.validateTableObject;
+import static com.amazonaws.glue.catalog.util.AWSGlueConfig.AWS_SKIP_CREATE;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static org.apache.hadoop.hive.metastore.HiveMetaStore.PUBLIC;
@@ -161,13 +162,17 @@ public class GlueMetastoreClientDelegate {
   public void createDatabase(org.apache.hadoop.hive.metastore.api.Database database) throws TException {
     checkNotNull(database, "database cannot be null");
 
-    if (StringUtils.isEmpty(database.getLocationUri())) {
-      database.setLocationUri(wh.getDefaultDatabasePath(database.getName()).toString());
-    } else {
-      database.setLocationUri(wh.getDnsPath(new Path(database.getLocationUri())).toString());
+    boolean madeDir = false;
+    Path dbPath = null;
+    if (conf.get(AWS_SKIP_CREATE) == null) {
+      if (StringUtils.isEmpty(database.getLocationUri())) {
+        database.setLocationUri(wh.getDefaultDatabasePath(database.getName()).toString());
+      } else {
+        database.setLocationUri(wh.getDnsPath(new Path(database.getLocationUri())).toString());
+      }
+      dbPath = new Path(database.getLocationUri());
+      madeDir = makeDirs(wh, dbPath);
     }
-    Path dbPath = new Path(database.getLocationUri());
-    boolean madeDir = makeDirs(wh, dbPath);
 
     try {
       DatabaseInput catalogDatabase = GlueInputConverter.convertToDatabaseInput(database);
@@ -274,7 +279,7 @@ public class GlueMetastoreClientDelegate {
       throw new MetaException(msg + e);
     }
 
-    if (deleteData) {
+    if (conf.get(AWS_SKIP_CREATE) == null && deleteData) {
       try {
         wh.deleteDir(new Path(dbLocation), true);
       } catch (Exception e) {
@@ -545,15 +550,19 @@ public class GlueMetastoreClientDelegate {
       return false;
     }
 
-    if (StringUtils.isEmpty(tbl.getSd().getLocation())) {
-      org.apache.hadoop.hive.metastore.api.Database db = getDatabase(tbl.getDbName());
-      tbl.getSd().setLocation(hiveShims.getDefaultTablePath(db, tbl.getTableName(), wh).toString());
-    } else {
-      tbl.getSd().setLocation(wh.getDnsPath(new Path(tbl.getSd().getLocation())).toString());
-    }
+    if (conf.get(AWS_SKIP_CREATE) == null) {
+      if (StringUtils.isEmpty(tbl.getSd().getLocation())) {
+        org.apache.hadoop.hive.metastore.api.Database db = getDatabase(tbl.getDbName());
+        tbl.getSd().setLocation(hiveShims.getDefaultTablePath(db, tbl.getTableName(), wh).toString());
+      } else {
+        tbl.getSd().setLocation(wh.getDnsPath(new Path(tbl.getSd().getLocation())).toString());
+      }
 
-    Path tblPath = new Path(tbl.getSd().getLocation());
-    return makeDirs(wh, tblPath);
+      Path tblPath = new Path(tbl.getSd().getLocation());
+      return makeDirs(wh, tblPath);
+    } else {
+      return true;
+    }
   }
 
   // =========================== Partition ===========================
@@ -584,8 +593,10 @@ public class GlueMetastoreClientDelegate {
     partition.setValues(values);
     partition.setSd(table.getSd().deepCopy());
 
-    Path partLocation = new Path(table.getSd().getLocation(), Warehouse.makePartName(table.getPartitionKeys(), values));
-    partition.getSd().setLocation(partLocation.toString());
+    if (conf.get(AWS_SKIP_CREATE) == null) {
+      Path partLocation = new Path(table.getSd().getLocation(), Warehouse.makePartName(table.getPartitionKeys(), values));
+      partition.getSd().setLocation(partLocation.toString());
+    }
 
     long timeInSecond = System.currentTimeMillis() / MILLISECOND_TO_SECOND_FACTOR;
     partition.setCreateTime((int) timeInSecond);
@@ -717,6 +728,12 @@ public class GlueMetastoreClientDelegate {
       partLocationStr = part.getSd().getLocation();
     }
 
+    if (conf.get(AWS_SKIP_CREATE) != null && partLocationStr != null) {
+      return new Path(partLocationStr);
+    } else {
+      logger.error("Location string for partition is null");
+    }
+
     if (StringUtils.isEmpty(partLocationStr)) {
       // set default location if not specified and this is
       // a physical table partition (not a view)
@@ -793,7 +810,7 @@ public class GlueMetastoreClientDelegate {
     checkArgument(StringUtils.isNotEmpty(dbName), "dbName cannot be null or empty");
     checkArgument(StringUtils.isNotEmpty(tblName), "tblName cannot be null or empty");
     checkNotNull(values, "values cannot be null");
-   
+
 
     Partition partition;
     try {
@@ -937,7 +954,7 @@ public class GlueMetastoreClientDelegate {
       }
 
       PartitionInput partitionInput = GlueInputConverter.convertToPartitionInput(part);
-     
+
       try {
         glueMetastore.updatePartition(dbName, tblName, part.getValues(), partitionInput);
       } catch (AmazonServiceException e) {
@@ -1452,11 +1469,11 @@ public class GlueMetastoreClientDelegate {
   public void setUGI(String username) throws TException {
     throw new UnsupportedOperationException("setUGI is unsupported");
   }
-  
+
   /**
    * Gets the user defined function in a database stored in metastore and
    * converts back to Hive function.
-   * 
+   *
    * @param dbName
    * @param functionName
    * @return
@@ -1481,7 +1498,7 @@ public class GlueMetastoreClientDelegate {
   /**
    * Gets user defined functions that match a pattern in database stored in
    * metastore and converts back to Hive function.
-   * 
+   *
    * @param dbName
    * @param pattern
    * @return
@@ -1509,7 +1526,7 @@ public class GlueMetastoreClientDelegate {
 
   /**
    * Creates a new user defined function in the metastore.
-   * 
+   *
    * @param function
    * @throws InvalidObjectException
    * @throws MetaException
@@ -1532,7 +1549,7 @@ public class GlueMetastoreClientDelegate {
 
   /**
    * Drops a user defined function in the database stored in metastore.
-   * 
+   *
    * @param dbName
    * @param functionName
    * @throws MetaException
@@ -1554,10 +1571,10 @@ public class GlueMetastoreClientDelegate {
       throw new MetaException(msg + e);
     }
   }
-  
+
   /**
    * Updates a user defined function in a database stored in the metastore.
-   * 
+   *
    * @param dbName
    * @param functionName
    * @param newFunction
@@ -1580,10 +1597,10 @@ public class GlueMetastoreClientDelegate {
       throw new MetaException(msg + e);
     }
   }
-  
+
   /**
    * Fetches the fields for a table in a database.
-   * 
+   *
    * @param db
    * @param tableName
    * @return
@@ -1605,10 +1622,10 @@ public class GlueMetastoreClientDelegate {
       throw new MetaException(msg + e);
     }
   }
-  
+
   /**
    * Fetches the schema for a table in a database.
-   * 
+   *
    * @param db
    * @param tableName
    * @return
@@ -1637,7 +1654,7 @@ public class GlueMetastoreClientDelegate {
 
   /**
    * Updates the partition values for a table in database stored in metastore.
-   * 
+   *
    * @param databaseName
    * @param tableName
    * @param partitionValues

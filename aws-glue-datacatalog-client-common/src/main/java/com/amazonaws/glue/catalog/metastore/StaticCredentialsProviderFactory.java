@@ -1,18 +1,17 @@
 package com.amazonaws.glue.catalog.metastore;
 
 import com.amazonaws.auth.AWSCredentialsProvider;
-import com.amazonaws.auth.AWSSessionCredentials;
-import com.amazonaws.auth.BasicSessionCredentials;
-import com.amazonaws.internal.StaticCredentialsProvider;
+import com.amazonaws.auth.AWSCredentials;
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.auth.BasicAWSCredentials;
 
 import org.apache.hadoop.hive.conf.HiveConf;
 
 import static com.amazonaws.glue.catalog.util.AWSGlueConfig.AWS_ACCESS_KEY_CONF_VAR;
 import static com.amazonaws.glue.catalog.util.AWSGlueConfig.AWS_SECRET_KEY_CONF_VAR;
-import static com.amazonaws.glue.catalog.util.AWSGlueConfig.AWS_SESSION_TOKEN_CONF_VAR;
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class SessionCredentialsProviderFactory implements AWSCredentialsProviderFactory {
+public class StaticCredentialsProviderFactory implements AWSCredentialsProviderFactory {
 
   @Override
   public AWSCredentialsProvider buildAWSCredentialsProvider(HiveConf hiveConf) {
@@ -21,14 +20,12 @@ public class SessionCredentialsProviderFactory implements AWSCredentialsProvider
 
     String accessKey = hiveConf.get(AWS_ACCESS_KEY_CONF_VAR);
     String secretKey = hiveConf.get(AWS_SECRET_KEY_CONF_VAR);
-    String sessionToken = hiveConf.get(AWS_SESSION_TOKEN_CONF_VAR);
 
     checkArgument(accessKey != null, AWS_ACCESS_KEY_CONF_VAR + " must be set.");
     checkArgument(secretKey != null, AWS_SECRET_KEY_CONF_VAR + " must be set.");
-    checkArgument(sessionToken != null, AWS_SESSION_TOKEN_CONF_VAR + " must be set.");
 
-    AWSSessionCredentials credentials = new BasicSessionCredentials(accessKey, secretKey, sessionToken);
+    AWSCredentials credentials = new BasicAWSCredentials(accessKey, secretKey);
 
-    return new StaticCredentialsProvider(credentials);
+    return new AWSStaticCredentialsProvider(credentials);
   }
 }

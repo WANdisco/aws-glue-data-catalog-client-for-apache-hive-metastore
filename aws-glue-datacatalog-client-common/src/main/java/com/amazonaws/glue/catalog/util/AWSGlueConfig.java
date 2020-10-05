@@ -8,6 +8,7 @@ public final class AWSGlueConfig {
 
   public static final String AWS_GLUE_ENDPOINT = "aws.glue.endpoint";
   public static final String AWS_REGION = "aws.region";
+  public static final String AWS_SKIP_CREATE = "aws.glue.skip_folders_creation";
   public static final String AWS_CATALOG_CREDENTIALS_PROVIDER_FACTORY_CLASS
       = "aws.catalog.credentials.provider.factory.class";
 
@@ -30,4 +31,8 @@ public final class AWSGlueConfig {
   public static final String AWS_GLUE_TABLE_CACHE_ENABLE = "aws.glue.cache.table.enable";
   public static final String AWS_GLUE_TABLE_CACHE_SIZE = "aws.glue.cache.table.size";
   public static final String AWS_GLUE_TABLE_CACHE_TTL_MINS = "aws.glue.cache.table.ttl-mins";
+
+  public static final String AWS_ACCESS_KEY_CONF_VAR = "hive.aws_session_access_id";
+  public static final String AWS_SECRET_KEY_CONF_VAR = "hive.aws_session_secret_key";
+  public static final String AWS_SESSION_TOKEN_CONF_VAR = "hive.aws_session_token";
 }

@@ -16,6 +16,9 @@ import static com.amazonaws.glue.catalog.util.AWSGlueConfig.AWS_GLUE_MAX_CONNECT
 import static com.amazonaws.glue.catalog.util.AWSGlueConfig.AWS_GLUE_MAX_RETRY;
 import static com.amazonaws.glue.catalog.util.AWSGlueConfig.AWS_GLUE_SOCKET_TIMEOUT;
 import static com.amazonaws.glue.catalog.util.AWSGlueConfig.AWS_REGION;
+import static com.amazonaws.glue.catalog.util.AWSGlueConfig.AWS_ACCESS_KEY_CONF_VAR;
+import static com.amazonaws.glue.catalog.util.AWSGlueConfig.AWS_SECRET_KEY_CONF_VAR;
+import static com.amazonaws.glue.catalog.util.AWSGlueConfig.AWS_SESSION_TOKEN_CONF_VAR;
 import static com.amazonaws.glue.catalog.util.AWSGlueConfig.DEFAULT_CONNECTION_TIMEOUT;
 import static com.amazonaws.glue.catalog.util.AWSGlueConfig.DEFAULT_MAX_CONNECTIONS;
 import static com.amazonaws.glue.catalog.util.AWSGlueConfig.DEFAULT_MAX_RETRY;
@@ -87,9 +90,9 @@ public class AWSGlueClientFactoryTest {
   @Test
   public void testClientConstructionWithSessionCredentialsProviderFactory() throws Exception {
     System.setProperty("aws.region", "us-west-2");
-    hiveConf.setStrings(SessionCredentialsProviderFactory.AWS_ACCESS_KEY_CONF_VAR, FAKE_ACCESS_KEY);
-    hiveConf.setStrings(SessionCredentialsProviderFactory.AWS_SECRET_KEY_CONF_VAR, FAKE_SECRET_KEY);
-    hiveConf.setStrings(SessionCredentialsProviderFactory.AWS_SESSION_TOKEN_CONF_VAR, FAKE_SESSION_TOKEN);
+    hiveConf.setStrings(AWS_ACCESS_KEY_CONF_VAR, FAKE_ACCESS_KEY);
+    hiveConf.setStrings(AWS_SECRET_KEY_CONF_VAR, FAKE_SECRET_KEY);
+    hiveConf.setStrings(AWS_SESSION_TOKEN_CONF_VAR, FAKE_SESSION_TOKEN);
 
     hiveConf.setStrings(AWS_CATALOG_CREDENTIALS_PROVIDER_FACTORY_CLASS,
         SessionCredentialsProviderFactory.class.getCanonicalName());
@@ -98,16 +101,16 @@ public class AWSGlueClientFactoryTest {
 
     assertNotNull(glueClient);
 
-    verify(hiveConf, atLeastOnce()).get(SessionCredentialsProviderFactory.AWS_ACCESS_KEY_CONF_VAR);
-    verify(hiveConf, atLeastOnce()).get(SessionCredentialsProviderFactory.AWS_SECRET_KEY_CONF_VAR);
-    verify(hiveConf, atLeastOnce()).get(SessionCredentialsProviderFactory.AWS_SESSION_TOKEN_CONF_VAR);
+    verify(hiveConf, atLeastOnce()).get(AWS_ACCESS_KEY_CONF_VAR);
+    verify(hiveConf, atLeastOnce()).get(AWS_SECRET_KEY_CONF_VAR);
+    verify(hiveConf, atLeastOnce()).get(AWS_SESSION_TOKEN_CONF_VAR);
   }
 
   @Test
   public void testCredentialsCreatedBySessionCredentialsProviderFactory() throws Exception {
-    hiveConf.setStrings(SessionCredentialsProviderFactory.AWS_ACCESS_KEY_CONF_VAR, FAKE_ACCESS_KEY);
-    hiveConf.setStrings(SessionCredentialsProviderFactory.AWS_SECRET_KEY_CONF_VAR, FAKE_SECRET_KEY);
-    hiveConf.setStrings(SessionCredentialsProviderFactory.AWS_SESSION_TOKEN_CONF_VAR, FAKE_SESSION_TOKEN);
+    hiveConf.setStrings(AWS_ACCESS_KEY_CONF_VAR, FAKE_ACCESS_KEY);
+    hiveConf.setStrings(AWS_SECRET_KEY_CONF_VAR, FAKE_SECRET_KEY);
+    hiveConf.setStrings(AWS_SESSION_TOKEN_CONF_VAR, FAKE_SESSION_TOKEN);
 
     SessionCredentialsProviderFactory factory = new SessionCredentialsProviderFactory();
     AWSCredentialsProvider provider = factory.buildAWSCredentialsProvider(hiveConf);
@@ -131,15 +134,15 @@ public class AWSGlueClientFactoryTest {
   @Test(expected = IllegalArgumentException.class)
   public void testMissingSecretKey() throws Exception {
     SessionCredentialsProviderFactory factory = new SessionCredentialsProviderFactory();
-    hiveConf.setStrings(SessionCredentialsProviderFactory.AWS_ACCESS_KEY_CONF_VAR, FAKE_ACCESS_KEY);
+    hiveConf.setStrings(AWS_ACCESS_KEY_CONF_VAR, FAKE_ACCESS_KEY);
     factory.buildAWSCredentialsProvider(hiveConf);
   }
 
   @Test(expected = IllegalArgumentException.class)
   public void testMissingSessionTokenKey() throws Exception {
     SessionCredentialsProviderFactory factory = new SessionCredentialsProviderFactory();
-    hiveConf.setStrings(SessionCredentialsProviderFactory.AWS_ACCESS_KEY_CONF_VAR, FAKE_ACCESS_KEY);
-    hiveConf.setStrings(SessionCredentialsProviderFactory.AWS_SECRET_KEY_CONF_VAR, FAKE_SECRET_KEY);
+    hiveConf.setStrings(AWS_ACCESS_KEY_CONF_VAR, FAKE_ACCESS_KEY);
+    hiveConf.setStrings(AWS_SECRET_KEY_CONF_VAR, FAKE_SECRET_KEY);
     factory.buildAWSCredentialsProvider(hiveConf);
   }
 
