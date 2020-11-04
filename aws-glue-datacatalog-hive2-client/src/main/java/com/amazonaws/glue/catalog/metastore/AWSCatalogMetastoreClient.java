@@ -109,6 +109,7 @@ import java.util.regex.Pattern;
 import static com.amazonaws.glue.catalog.converters.ConverterUtils.catalogTableToString;
 import static com.amazonaws.glue.catalog.converters.ConverterUtils.stringToCatalogTable;
 import static com.amazonaws.glue.catalog.metastore.GlueMetastoreClientDelegate.INDEX_PREFIX;
+import static com.amazonaws.glue.catalog.util.AWSGlueConfig.AWS_SKIP_DEFAULT_DB;
 import static com.amazonaws.glue.catalog.util.MetastoreClientUtils.isExternalTable;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static org.apache.hadoop.hive.metastore.MetaStoreUtils.DEFAULT_DATABASE_COMMENT;
@@ -124,7 +125,7 @@ public class AWSCatalogMetastoreClient implements IMetaStoreClient {
   private final Warehouse wh;
   private final GlueMetastoreClientDelegate glueMetastoreClientDelegate;
   private final String catalogId;
-  
+
   private static final int BATCH_DELETE_PARTITIONS_PAGE_SIZE = 25;
   private static final int BATCH_DELETE_PARTITIONS_THREADS_COUNT = 5;
   static final String BATCH_DELETE_PARTITIONS_THREAD_POOL_NAME_FORMAT = "batch-delete-partitions-%d";
@@ -138,7 +139,8 @@ public class AWSCatalogMetastoreClient implements IMetaStoreClient {
   private Map<String, String> currentMetaVars;
   private final AwsGlueHiveShims hiveShims = ShimsLoader.getHiveShims();
 
-  public AWSCatalogMetastoreClient(HiveConf conf, HiveMetaHookLoader hook) throws MetaException {
+  public AWSCatalogMetastoreClient(HiveConf conf, HiveMetaHookLoader hook)
+    throws MetaException {
     this.conf = conf;
     glueClient = new AWSGlueClientFactory(this.conf).newClient();
 
@@ -150,9 +152,13 @@ public class AWSCatalogMetastoreClient implements IMetaStoreClient {
 
     snapshotActiveConf();
     catalogId = MetastoreClientUtils.getCatalogId(conf);
-    if (!doesDefaultDBExist()) {
+    if (needToCreateDefaultDB() && !doesDefaultDBExist()) {
       createDefaultDatabase();
     }
+  }
+
+  private boolean needToCreateDefaultDB() {
+    return (conf.get(AWS_SKIP_DEFAULT_DB) == null);
   }
 
   /**
@@ -191,7 +197,7 @@ public class AWSCatalogMetastoreClient implements IMetaStoreClient {
       this.catalogId = catalogId;
       return this;
     }
-    
+
     public AWSCatalogMetastoreClient build() throws MetaException {
       return new AWSCatalogMetastoreClient(this);
     }
@@ -210,7 +216,7 @@ public class AWSCatalogMetastoreClient implements IMetaStoreClient {
     } else {
       this.wh = new Warehouse(conf);
     }
-    
+
     if (builder.catalogId != null) {
     	this.catalogId = builder.catalogId;
     } else {
@@ -231,13 +237,13 @@ public class AWSCatalogMetastoreClient implements IMetaStoreClient {
      * metastore client is instantiated. For now, simply copying the
      * functionality in the thrift server
      */
-    if(builder.createDefaults && !doesDefaultDBExist()) {
+    if(builder.createDefaults && !doesDefaultDBExist() && needToCreateDefaultDB()) {
       createDefaultDatabase();
     }
   }
 
   private boolean doesDefaultDBExist() throws MetaException {
-    
+
     try {
       GetDatabaseRequest getDatabaseRequest = new GetDatabaseRequest().withName(DEFAULT_DATABASE_NAME).withCatalogId(
           catalogId);
@@ -356,7 +362,7 @@ public class AWSCatalogMetastoreClient implements IMetaStoreClient {
   @Override
   public void alterFunction(String dbName, String functionName, org.apache.hadoop.hive.metastore.api.Function newFunction) throws InvalidObjectException,
         MetaException, TException {
-    glueMetastoreClientDelegate.alterFunction(dbName, functionName, newFunction); 
+    glueMetastoreClientDelegate.alterFunction(dbName, functionName, newFunction);
   }
 
   @Override
@@ -974,7 +980,7 @@ public class AWSCatalogMetastoreClient implements IMetaStoreClient {
       for (String databaseName : databaseNames) {
         GetUserDefinedFunctionsRequest getUserDefinedFunctionsRequest = new GetUserDefinedFunctionsRequest()
             .withDatabaseName(databaseName).withPattern(".*").withCatalogId(catalogId);
-        
+
         List<UserDefinedFunction> catalogFunctions = glueClient.getUserDefinedFunctions(
             getUserDefinedFunctionsRequest)
             .getUserDefinedFunctions();

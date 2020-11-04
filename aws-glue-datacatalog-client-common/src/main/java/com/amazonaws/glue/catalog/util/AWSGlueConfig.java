@@ -9,6 +9,7 @@ public final class AWSGlueConfig {
   public static final String AWS_GLUE_ENDPOINT = "aws.glue.endpoint";
   public static final String AWS_REGION = "aws.region";
   public static final String AWS_SKIP_CREATE = "aws.glue.skip_folders_creation";
+  public static final String AWS_SKIP_DEFAULT_DB = "aws.glue.skip_default_db";
   public static final String AWS_CATALOG_CREDENTIALS_PROVIDER_FACTORY_CLASS
       = "aws.catalog.credentials.provider.factory.class";
 
