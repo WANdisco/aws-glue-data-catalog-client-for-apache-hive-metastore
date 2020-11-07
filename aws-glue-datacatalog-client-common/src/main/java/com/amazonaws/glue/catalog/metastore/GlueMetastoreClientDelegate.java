@@ -637,7 +637,7 @@ public class GlueMetastoreClientDelegate {
       for (org.apache.hadoop.hive.metastore.api.Partition partition : hivePartitions) {
         Path location = getPartitionLocation(tbl, partition);
         boolean partDirCreated = false;
-        if (location != null) {
+        if (location != null && (conf.get(AWS_SKIP_CREATE) == null)) {
           partition.getSd().setLocation(location.toString());
           partDirCreated = makeDirs(wh, location);
         }
