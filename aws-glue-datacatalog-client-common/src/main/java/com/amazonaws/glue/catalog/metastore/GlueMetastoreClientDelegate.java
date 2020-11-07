@@ -642,11 +642,13 @@ public class GlueMetastoreClientDelegate {
     Map<PartitionKey, Path> addedPath = Maps.newHashMap();
     try {
       for (org.apache.hadoop.hive.metastore.api.Partition partition : hivePartitions) {
-        Path location = getPartitionLocation(tbl, partition);
         boolean partDirCreated = false;
-        if (location != null && allowDataAccess()) {
-          partition.getSd().setLocation(location.toString());
-          partDirCreated = makeDirs(wh, location);
+        if (allowDataAccess()) {
+          Path location = getPartitionLocation(tbl, partition);
+          if (location != null) {
+            partition.getSd().setLocation(location.toString());
+            partDirCreated = makeDirs(wh, location);
+          }
         }
         Partition catalogPartition = HiveToCatalogConverter.convertPartition(partition);
         catalogPartitions.add(catalogPartition);
