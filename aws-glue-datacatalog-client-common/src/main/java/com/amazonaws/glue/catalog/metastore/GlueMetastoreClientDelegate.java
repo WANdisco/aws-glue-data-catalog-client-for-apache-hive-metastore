@@ -164,7 +164,7 @@ public class GlueMetastoreClientDelegate {
 
     boolean madeDir = false;
     Path dbPath = null;
-    if (conf.get(AWS_SKIP_CREATE) == null) {
+    if (allowDataAccess()) {
       if (StringUtils.isEmpty(database.getLocationUri())) {
         database.setLocationUri(wh.getDefaultDatabasePath(database.getName()).toString());
       } else {
@@ -279,7 +279,7 @@ public class GlueMetastoreClientDelegate {
       throw new MetaException(msg + e);
     }
 
-    if (conf.get(AWS_SKIP_CREATE) == null && deleteData) {
+    if (allowDataAccess() && deleteData) {
       try {
         wh.deleteDir(new Path(dbLocation), true);
       } catch (Exception e) {
@@ -443,7 +443,9 @@ public class GlueMetastoreClientDelegate {
       newTable.setTableType(MANAGED_TABLE.toString());
     }
 
-    if (hiveShims.requireCalStats(conf, null, null, newTable, environmentContext) && newTable.getPartitionKeys().isEmpty()) {
+    if (allowDataAccess() &&
+        hiveShims.requireCalStats(conf, null, null, newTable, environmentContext) &&
+        newTable.getPartitionKeys().isEmpty()) {
       //update table stats for non-partition Table
       org.apache.hadoop.hive.metastore.api.Database db = getDatabase(newTable.getDbName());
       hiveShims.updateTableStatsFast(db, newTable, wh, false, true, environmentContext);
@@ -550,7 +552,7 @@ public class GlueMetastoreClientDelegate {
       return false;
     }
 
-    if (conf.get(AWS_SKIP_CREATE) == null) {
+    if (allowDataAccess()) {
       if (StringUtils.isEmpty(tbl.getSd().getLocation())) {
         org.apache.hadoop.hive.metastore.api.Database db = getDatabase(tbl.getDbName());
         tbl.getSd().setLocation(hiveShims.getDefaultTablePath(db, tbl.getTableName(), wh).toString());
@@ -564,6 +566,11 @@ public class GlueMetastoreClientDelegate {
       return true;
     }
   }
+
+  private boolean allowDataAccess() {
+    return conf.get(AWS_SKIP_CREATE) == null;
+  }
+
 
   // =========================== Partition ===========================
 
@@ -593,7 +600,7 @@ public class GlueMetastoreClientDelegate {
     partition.setValues(values);
     partition.setSd(table.getSd().deepCopy());
 
-    if (conf.get(AWS_SKIP_CREATE) == null) {
+    if (allowDataAccess()) {
       Path partLocation = new Path(table.getSd().getLocation(), Warehouse.makePartName(table.getPartitionKeys(), values));
       partition.getSd().setLocation(partLocation.toString());
     }
@@ -637,7 +644,7 @@ public class GlueMetastoreClientDelegate {
       for (org.apache.hadoop.hive.metastore.api.Partition partition : hivePartitions) {
         Path location = getPartitionLocation(tbl, partition);
         boolean partDirCreated = false;
-        if (location != null && (conf.get(AWS_SKIP_CREATE) == null)) {
+        if (location != null && allowDataAccess()) {
           partition.getSd().setLocation(location.toString());
           partDirCreated = makeDirs(wh, location);
         }
@@ -728,7 +735,7 @@ public class GlueMetastoreClientDelegate {
       partLocationStr = part.getSd().getLocation();
     }
 
-    if (conf.get(AWS_SKIP_CREATE) != null && partLocationStr != null) {
+    if (allowDataAccess() && partLocationStr != null) {
       return new Path(partLocationStr);
     } else {
       logger.error("Location string for partition is null");
